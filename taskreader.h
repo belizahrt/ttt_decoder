@@ -9,14 +9,19 @@
 namespace tasks {
     struct task_data {
         static constexpr std::size_t variants_count{4};
+        static constexpr std::size_t flags_count{10};
 
         std::string                     text;
         std::size_t                     correct_variant{};
+
         std::array
         <std::string, variants_count>   variants;
+
+        std::array
+        <std::string, flags_count>      flags;
     };
 
-    class task_reader{
+    class task_reader {
     public:
         explicit task_reader(const std::string &file_name);
 
@@ -30,8 +35,6 @@ namespace tasks {
 
         std::string read_next();
 
-        void read_unk();
-
     private:
         std::ifstream m_file;
 
@@ -40,8 +43,7 @@ namespace tasks {
 
         static const std::size_t questions_count_size{4};
         static const std::size_t useless_string_size{0xF * 2};
-        static const std::size_t unk_strings_count{5};
     };
 }
 
-#endif //CLION_TASKREADER_H
+#endif

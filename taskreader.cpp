@@ -33,10 +33,11 @@ void task_reader::read()
         m_file.seekg(useless_string_size, std::ios_base::cur);
 
         // read variants & correct variant id
-        std::tie(task.correct_variant, task.variants) = [this]() {
+        std::tie(task.correct_variant, task.variants, task.flags) =
+        [this]() {
             std::size_t correct_variant;
             std::array<std::string, task_data::variants_count> variants;
-
+            // Read variants text and correct variant
             for (std::size_t v{0}; v < variants.size(); ++v) {
                 std::string variant = read_next();
                 variants[v] = variant;
@@ -45,9 +46,16 @@ void task_reader::read()
                 if (is_correct == "1")
                     correct_variant = v;
             }
-            read_unk();
 
-            return std::move(std::make_pair(correct_variant, variants));
+            std::array<std::string, task_data::flags_count> flags;
+            //Read flags
+            for (std::size_t f{0}; f < task_data::flags_count; ++f) {
+                flags[f] = read_next();
+            }
+
+            return std::make_tuple(correct_variant,
+                                   std::move(variants),
+                                   std::move(flags));
         }();
 
         m_tasks.push_back(std::move(task));
@@ -70,13 +78,6 @@ std::string task_reader::read_next()
     text.erase(text.begin());
 
     return text;
-}
-
-void task_reader::read_unk()
-{
-    for (std::size_t i{0}; i < unk_strings_count; ++i) {
-        read_next(); read_next();
-    }
 }
 
 task_data task_reader::at(std::size_t pos) const
