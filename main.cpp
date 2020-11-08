@@ -1,43 +1,75 @@
 #include "taskreader.h"
 
 #include <fstream>
+#include <iostream>
 
-int main()
+//
+bool write_csv(const tasks::task_reader&, const std::string&, bool);
+//
+
+int main(int argc, char** argv)
 {
-    tasks::task_reader reader("TypDinComp.dat");
+    if (argc <= 2) {
+        std::cerr << "No command line args!";
+        return 1;
+    }
 
-    std::ofstream file("TypDinComp2.csv");
+    std::string in_file_name = argv[1];
+    std::string out_file_name = argv[2];
+    bool correct_only = [&]() {
+        if (argc >= 4)
+            return (std::string_view(argv[3]) == "/co");
 
-    file.write("#; Question; Answer\n", 20);
+        return false;
+    }();
 
-    for (std::size_t i{0}; i < reader.count(); ++i) {
-        auto task = reader.at(i);
+    tasks::task_reader reader(in_file_name);
+    bool success = write_csv(reader, out_file_name, correct_only);
 
-        std::string out{};
-        out += (std::to_string(i+1) + "; ");
-        out += (task.text + "; ");
-
-//        out += (task.variants[task.correct_variant]) + "\n";
-//        file.write(out.c_str(), out.length()+1);
-
-        out += (task.variants.front() + "; ");
-        out += ((task.correct_variant == 0) ? "1\n" : "\n");
-        file.write(out.c_str(), out.length()+1);
-
-        out.erase();
-        for (std::size_t j{1}; j < 4; ++j) {
-            out += "; ; ";
-            out += (task.variants.at(j) + "; ");
-            out += ((task.correct_variant == j) ? "1\n" : "\n");
-        }
-
-        for (std::size_t k{0}; k < 10; ++k) {
-            out += "; ; ; ";
-            out += task.flags.at(k) + "\n";
-        }
-
-        file.write(out.c_str(), out.length()+1);
+    if (success) {
+        std::cout << "Test successfully decoded!\n";
+    }
+    else {
+        std::cerr << "Failed to decode test!\n";
     }
 
     return 0;
+}
+
+bool write_csv(const tasks::task_reader& reader,
+               const std::string& file_name,
+               bool correct_only = true)
+{
+    std::ofstream file(file_name, std::ios::out | std::ios::binary);
+    if (!file.is_open())
+        return false;
+
+    file.write("#;Question;Pic;Variants;Correct\n", 33);
+
+    for (std::size_t t{0}; t < reader.count(); ++t) {
+        auto task = reader.at(t);
+
+        std::string variant_text = correct_only ?
+                                   task.variants.at(task.correct_variant) : task.variants.at(0);
+
+        std::string question_line =
+                std::to_string(t+1) + ";" +
+                task.text + ";" +
+                task.flags.at(3) + ";" +
+                variant_text + ";" +
+                ((task.correct_variant == 0 || correct_only) ? "1\n" : "\n");
+        file.write(question_line.c_str(), question_line.length() + 1);
+
+        if (correct_only) continue;
+        for (std::size_t v{1}; v < tasks::task_data::variants_count; ++v) {
+            std::string variant_line = ";;;" +
+                                       task.variants.at(v) + ";" +
+                                       ((task.correct_variant == v) ? "1\n" : "\n");
+            file.write(variant_line.c_str(), variant_line.length() + 1);
+        }
+    }
+
+    file.close();
+
+    return true;
 }
